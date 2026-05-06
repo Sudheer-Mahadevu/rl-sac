@@ -1,3 +1,6 @@
 pendulum/output
+*/.vscode
 /.vscode
 pendulum/__pycache__
+pendulum/plots2.py
+pendulum/plots3.py

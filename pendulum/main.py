@@ -26,12 +26,12 @@ class NumpyEncoder(json.JSONEncoder):
             return obj.tolist()
         return super(NumpyEncoder, self).default(obj)
     
-def make_run(angles, seeds, save_path, args):
+def make_run(angles, seeds, save_path, args, auto_alpha = True):
     for theta in angles:
         auto_logs = []
         train_logs = { 'r': [], 't': [], 'a':[]} # list of ret arrays for each seed. similarly for t,a
         print(f"\n{'='*60}")
-        print(f'θ_target = {theta:+4d}°   (auto-α SAC)')
+        print(f'θ_target = {theta:+4d}°   (α = {args['alpha']} ({auto_alpha}) SAC)')
         print(f"{'='*60}")
         for seed in seeds:
             set_seeds(seed)
@@ -46,8 +46,8 @@ def make_run(angles, seeds, save_path, args):
             agent = SACAgent(
                 obs_dim, act_dim,
                 hidden_dim=args['hidden_dim'],
-                auto_alpha=True,
-                init_alpha=0.2,
+                auto_alpha=auto_alpha,
+                init_alpha=args['alpha'],
                 random_steps=10_000,
             )
             print(env.theta_target)
@@ -68,13 +68,13 @@ def make_run(angles, seeds, save_path, args):
             
             torch.save({"actor": agent.actor.state_dict(),
                         "critic": agent.critic.state_dict()},
-                        f"{save_path}/weights/a_alpha_theta{theta}_seed{seed}.pt")
+                        f"{save_path}/weights/alpha{args['alpha']}_theta{theta}_seed{seed}.pt")
             print(f'  seed {seed:2d} done  |  final eval mean = {log[-1][1]:.2f}')
 
             info = {'eval_logs': auto_logs, 'train_logs': train_logs}
         
             os.makedirs(f"{save_path}/logs", exist_ok = True)
-            file_path = f'{save_path}/logs/a_alpha_theta{theta}.json'
+            file_path = f"{save_path}/logs/alpha{args['alpha']}_theta{theta}.json"
             with open(file_path, 'w') as f:
                 json.dump(info, f, cls=NumpyEncoder)
             print(f'Logs updated')
@@ -101,9 +101,12 @@ if __name__ == '__main__':
     args = {'hidden_dim': 64,
             'total_steps': 80_000,
             'eval_freq': 10_000,
-            'eval_episodes': 20}
+            'eval_episodes': 20,
+            'alpha' : 0.2,
+            }
 
-    make_run([0, 90], SEEDS[:num_seeds], save_path='output', args=args)
+    make_run([0, 90], SEEDS[:num_seeds], save_path='output', args=args,
+             auto_alpha=False)
 
 
 
